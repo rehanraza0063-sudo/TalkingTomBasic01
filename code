@@ -1,0 +1,737 @@
+from flask import Flask, render_template_string
+
+app = Flask(__name__)
+
+HTML = r"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Talking Pet</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #87ceeb, #e8f8ff);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.game {
+    width: 100%;
+    max-width: 650px;
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* TOP BAR */
+
+.topbar {
+    position: absolute;
+    top: 20px;
+    width: 90%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+}
+
+.status {
+    background: white;
+    padding: 10px 15px;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px #0002;
+}
+
+/* PET */
+
+.pet-area {
+    width: 330px;
+    height: 390px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.pet {
+    width: 260px;
+    height: 280px;
+    background: #d58b52;
+    border-radius: 48% 48% 45% 45%;
+    position: relative;
+    box-shadow: 0 15px 30px #0003;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+/* EARS */
+
+.ear {
+    position: absolute;
+    width: 105px;
+    height: 120px;
+    background: #c47742;
+    top: -55px;
+    z-index: -1;
+}
+
+.ear.left {
+    left: 5px;
+    transform: rotate(-28deg);
+    border-radius: 70% 20% 50% 20%;
+}
+
+.ear.right {
+    right: 5px;
+    transform: rotate(28deg);
+    border-radius: 20% 70% 20% 50%;
+}
+
+/* EYES */
+
+.eye {
+    position: absolute;
+    top: 70px;
+    width: 55px;
+    height: 70px;
+    background: white;
+    border-radius: 50%;
+    border: 3px solid #333;
+}
+
+.eye.left {
+    left: 48px;
+}
+
+.eye.right {
+    right: 48px;
+}
+
+.pupil {
+    width: 25px;
+    height: 35px;
+    background: #222;
+    border-radius: 50%;
+    position: absolute;
+    left: 15px;
+    top: 17px;
+}
+
+.pupil::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 5px;
+    left: 5px;
+}
+
+/* NOSE */
+
+.nose {
+    position: absolute;
+    top: 135px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 35px;
+    height: 27px;
+    background: #ef7891;
+    border-radius: 50% 50% 45% 45%;
+}
+
+/* MOUTH */
+
+.mouth {
+    position: absolute;
+    top: 170px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 35px;
+    border-bottom: 6px solid #333;
+    border-radius: 0 0 50px 50px;
+    transition: all 0.1s;
+}
+
+.talking .mouth {
+    width: 55px;
+    height: 55px;
+    background: #4a1717;
+    border: 4px solid #333;
+    border-radius: 50%;
+    animation: talk 0.18s infinite alternate;
+}
+
+@keyframes talk {
+    from {
+        transform: translateX(-50%) scaleY(0.6);
+    }
+    to {
+        transform: translateX(-50%) scaleY(1);
+    }
+}
+
+/* CHEEKS */
+
+.cheek {
+    position: absolute;
+    top: 155px;
+    width: 38px;
+    height: 20px;
+    background: #ef9a83;
+    border-radius: 50%;
+}
+
+.cheek.left {
+    left: 20px;
+}
+
+.cheek.right {
+    right: 20px;
+}
+
+/* BODY */
+
+.body {
+    position: absolute;
+    width: 210px;
+    height: 120px;
+    background: #d58b52;
+    bottom: -75px;
+    left: 25px;
+    border-radius: 50% 50% 30% 30%;
+}
+
+/* PAWS */
+
+.paw {
+    position: absolute;
+    width: 65px;
+    height: 55px;
+    background: #d58b52;
+    border-radius: 50%;
+    bottom: -95px;
+}
+
+.paw.left {
+    left: 35px;
+}
+
+.paw.right {
+    right: 35px;
+}
+
+/* SPEECH */
+
+.speech {
+    position: absolute;
+    top: -65px;
+    background: white;
+    padding: 12px 20px;
+    border-radius: 20px;
+    box-shadow: 0 5px 15px #0002;
+    font-size: 17px;
+    max-width: 280px;
+    text-align: center;
+    opacity: 0;
+    transition: 0.3s;
+}
+
+.speech.show {
+    opacity: 1;
+}
+
+/* BUTTONS */
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 100px;
+    width: 95%;
+}
+
+button {
+    border: none;
+    padding: 13px 20px;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    background: white;
+    box-shadow: 0 5px 12px #0002;
+    transition: 0.15s;
+}
+
+button:hover {
+    transform: translateY(-3px);
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+.mic {
+    background: #ff6b6b;
+    color: white;
+    font-weight: bold;
+}
+
+/* ANIMATIONS */
+
+.jump {
+    animation: jump 0.6s;
+}
+
+@keyframes jump {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-80px) rotate(5deg); }
+    100% { transform: translateY(0); }
+}
+
+.shake {
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-15px); }
+    75% { transform: translateX(15px); }
+}
+
+.love {
+    animation: love 0.8s;
+}
+
+@keyframes love {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.hearts {
+    position: absolute;
+    font-size: 30px;
+    animation: hearts 1s forwards;
+    pointer-events: none;
+}
+
+@keyframes hearts {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(-150px);
+        opacity: 0;
+    }
+}
+
+/* MOBILE */
+
+@media(max-width:500px) {
+
+    .title {
+        font-size: 22px;
+    }
+
+    .pet-area {
+        transform: scale(0.85);
+    }
+
+    .controls {
+        margin-top: 70px;
+    }
+
+    button {
+        font-size: 14px;
+        padding: 11px 15px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+
+    <div class="topbar">
+        <div class="title">🐾 Talking Pet</div>
+        <div class="status">❤️ <span id="happiness">80</span></div>
+    </div>
+
+    <div class="pet-area">
+
+        <div class="speech" id="speech">
+            Hi! I'm your pet! 🐱
+        </div>
+
+        <div class="pet" id="pet">
+
+            <div class="ear left"></div>
+            <div class="ear right"></div>
+
+            <div class="eye left">
+                <div class="pupil"></div>
+            </div>
+
+            <div class="eye right">
+                <div class="pupil"></div>
+            </div>
+
+            <div class="cheek left"></div>
+            <div class="cheek right"></div>
+
+            <div class="nose"></div>
+            <div class="mouth"></div>
+
+            <div class="body"></div>
+
+            <div class="paw left"></div>
+            <div class="paw right"></div>
+
+        </div>
+    </div>
+
+    <div class="controls">
+
+        <button onclick="talkRandom()">💬 Talk</button>
+
+        <button onclick="feed()">🍎 Feed</button>
+
+        <button onclick="play()">🎾 Play</button>
+
+        <button onclick="petAnimal()">❤️ Pet</button>
+
+        <button class="mic" onclick="listen()">🎤 Talk to Me</button>
+
+    </div>
+
+</div>
+
+<script>
+
+let happiness = 80;
+
+const pet = document.getElementById("pet");
+const speech = document.getElementById("speech");
+const happinessText = document.getElementById("happiness");
+
+function updateHappiness(value) {
+
+    happiness += value;
+
+    if (happiness > 100) happiness = 100;
+    if (happiness < 0) happiness = 0;
+
+    happinessText.innerText = happiness;
+}
+
+function showSpeech(text, speak=true) {
+
+    speech.innerText = text;
+    speech.classList.add("show");
+
+    setTimeout(() => {
+        speech.classList.remove("show");
+    }, 4000);
+
+    if (speak) {
+
+        window.speechSynthesis.cancel();
+
+        const voice = new SpeechSynthesisUtterance(text);
+
+        voice.rate = 0.9;
+        voice.pitch = 1.25;
+        voice.volume = 1;
+
+        voice.onstart = function() {
+            pet.classList.add("talking");
+        };
+
+        voice.onend = function() {
+            pet.classList.remove("talking");
+        };
+
+        window.speechSynthesis.speak(voice);
+    }
+}
+
+function talkRandom() {
+
+    const messages = [
+
+        "Hello! How are you?",
+        "I am your virtual pet!",
+        "Let's play together!",
+        "You are my best friend!",
+        "Give me some food!",
+        "I love talking with you!",
+        "What are you doing?",
+        "Hehehe!",
+        "That was fun!",
+        "Come on, let's play!"
+
+    ];
+
+    const message =
+        messages[Math.floor(Math.random() * messages.length)];
+
+    showSpeech(message);
+}
+
+function feed() {
+
+    updateHappiness(5);
+
+    pet.classList.add("love");
+
+    showSpeech("Yummy! Thank you! 🍎");
+
+    setTimeout(() => {
+        pet.classList.remove("love");
+    }, 800);
+}
+
+function play() {
+
+    updateHappiness(8);
+
+    pet.classList.add("jump");
+
+    showSpeech("Yay! Let's play! 🎾");
+
+    setTimeout(() => {
+        pet.classList.remove("jump");
+    }, 600);
+}
+
+function petAnimal() {
+
+    updateHappiness(4);
+
+    pet.classList.add("love");
+
+    showSpeech("Awwww... I like that! ❤️");
+
+    createHearts();
+
+    setTimeout(() => {
+        pet.classList.remove("love");
+    }, 800);
+}
+
+function createHearts() {
+
+    for(let i=0; i<5; i++) {
+
+        const heart = document.createElement("div");
+
+        heart.className = "hearts";
+        heart.innerText = "❤️";
+
+        heart.style.left =
+            (45 + Math.random()*20) + "%";
+
+        heart.style.top =
+            (45 + Math.random()*10) + "%";
+
+        document.body.appendChild(heart);
+
+        setTimeout(() => {
+            heart.remove();
+        }, 1000);
+    }
+}
+
+/* CLICK PET */
+
+pet.addEventListener("click", function() {
+
+    const reactions = [
+        "Hey! That tickles! 😂",
+        "Meow!",
+        "Hehehe!",
+        "Don't poke me!",
+        "I like attention! ❤️"
+    ];
+
+    pet.classList.add("shake");
+
+    showSpeech(
+        reactions[Math.floor(Math.random()*reactions.length)]
+    );
+
+    setTimeout(() => {
+        pet.classList.remove("shake");
+    }, 500);
+
+});
+
+/* MICROPHONE */
+
+function listen() {
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+
+        showSpeech(
+            "Sorry, your browser doesn't support voice recognition."
+        );
+
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "en-IN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    showSpeech("I'm listening... 🎤", false);
+
+    recognition.start();
+
+    recognition.onresult = function(event) {
+
+        const text =
+            event.results[0][0].transcript;
+
+        respondToUser(text);
+    };
+
+    recognition.onerror = function() {
+
+        showSpeech(
+            "I couldn't hear you. Try again! 🎤"
+        );
+    };
+}
+
+function respondToUser(text) {
+
+    const lower = text.toLowerCase();
+
+    let response;
+
+    if (
+        lower.includes("hello") ||
+        lower.includes("hi") ||
+        lower.includes("hey")
+    ) {
+
+        response = "Hello! Nice to meet you!";
+
+    } else if (
+        lower.includes("how are you")
+    ) {
+
+        response = "I'm feeling great!";
+
+    } else if (
+        lower.includes("your name")
+    ) {
+
+        response = "I'm your talking pet!";
+
+    } else if (
+        lower.includes("play")
+    ) {
+
+        response = "Yes! Let's play!";
+
+        play();
+
+        return;
+
+    } else if (
+        lower.includes("food") ||
+        lower.includes("eat")
+    ) {
+
+        response = "Yummy! I want some food!";
+
+        feed();
+
+        return;
+
+    } else if (
+        lower.includes("love")
+    ) {
+
+        response = "Aww! I love you too! ❤️";
+
+        petAnimal();
+
+        return;
+
+    } else if (
+        lower.includes("bye")
+    ) {
+
+        response = "Bye! Come back soon!";
+
+    } else {
+
+        response =
+            "You said: " + text + ". That's interesting!";
+    }
+
+    showSpeech(response);
+}
+
+/* START MESSAGE */
+
+setTimeout(() => {
+
+    showSpeech(
+        "Hi! Click me or talk to me! 🐱"
+    );
+
+}, 800);
+
+</script>
+
+</body>
+</html>
+"""
+
+@app.route("/")
+def home():
+    return render_template_string(HTML)
+
+
+if __name__ == "__main__":
+    print("\n======================================")
+    print("🐾 TALKING PET WEB APP")
+    print("======================================")
+    print("Open: http://127.0.0.1:5000")
+    print("Press CTRL+C to stop")
+    print("======================================\n")
+
+    app.run(host="127.0.0.1", port=5000, debug=False)
